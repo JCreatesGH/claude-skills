@@ -1,0 +1,25 @@
+# Secrets — NEVER commit signing keys or API secrets
+secrets/
+*.pem
+license-signing-key.json
+.dev.vars
+.env
+.env.*
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-error.log*
+
+# Generated store assets (output of the chrome-store-assets scripts)
+**/store-assets/raw/
+**/store-assets/screenshots/
+**/store-assets/*.png
+**/store-assets/*.svg
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
