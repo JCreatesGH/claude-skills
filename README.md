@@ -28,10 +28,10 @@ Restart your Claude client. The skill activates automatically when a request mat
 
 **Project-scoped (only inside one repo):** copy the folder into `<your-project>/.claude/skills/` instead.
 
-**As a `.skill` bundle (for upload-based installs):** zip the folder's *contents*:
+**As a `.skill` bundle (for upload-based installs):** grab a prebuilt bundle from the [**Releases**](https://github.com/JCreatesGH/claude-skills/releases) page, or build one yourself (a `.skill` is just a zip with the skill folder at its root):
 
 ```bash
-cd chrome-store-assets && zip -r ../chrome-store-assets.skill . && cd ..
+zip -r chrome-store-assets.skill chrome-store-assets -x '*.DS_Store'
 ```
 
 ---
