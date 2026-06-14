@@ -9,6 +9,8 @@ These are real, battle-tested skills extracted from shipping projects. Where a s
 | [`chrome-store-assets`](chrome-store-assets/) | Generates exact-dimension Chrome Web Store graphics (icon, promo tiles, framed screenshots) on macOS with zero image libraries — pure SVG → PNG via the built-in `sips`. Includes a full Chrome Web Store listing-field cheat sheet. | Shipping a browser extension (or any app) to a store, or making pixel-exact PNGs on a Mac without ImageMagick/node-canvas. |
 | [`paid-extension-stripe-licensing`](paid-extension-stripe-licensing/) | Turns a client-side app (extension/desktop/downloadable) into a paid product with a free tier and **offline-verified** signed license keys. The Stripe secret never ships in the client — a tiny Cloudflare Worker fulfills purchases and enforces one-device activation. | Monetizing downloadable software where you can't trust the client and don't want to run a heavy backend. |
 | [`servicenow-updateset-qa-atf`](servicenow-updateset-qa-atf/) | Reviews a ServiceNow update set against its Jira story (change manifest, code/ACL review, AC traceability, risk score) and then authors deployable ATF tests as ServiceNow SDK (Fluent) code. | Pre-promotion QA of ServiceNow changes and auto-generating automated tests for them. |
+| [`unity-headless-validation`](unity-headless-validation/) | Compile-checks Unity C# in seconds **without launching Unity** (bundled Roslyn), and runs `-batchmode` tests + scene bakes on a lock-free clone **while the editor stays open**. | Fast edit→verify loops and CI gates on a Unity project, especially with the editor already open. |
+| [`unity-visual-self-qa`](unity-visual-self-qa/) | Renders every Unity scene and popup to exact-size PNGs headlessly (HUD included), then reviews them by reading + cropping + colour-probing. | Letting an agent (or CI) *see* a Unity game's UI/art without a human screenshotting. |
 
 ---
 
@@ -81,6 +83,50 @@ End-to-end ServiceNow update set QA review **and** ATF test generation. Given a 
 - `references/fluent-atf-api.md` — verified ServiceNow SDK (Fluent) ATF API with examples.
 - `references/deploy-and-run.md` — how to deploy the generated ATF via the ServiceNow SDK and run it.
 - `examples/` — a worked review + ATF pair showing the expected shape and depth.
+
+### 🎮 unity-headless-validation
+
+Validate Unity C# changes from the command line. Two capabilities that together remove the slow,
+single-instance editor from your inner loop: (1) **compile-check in ~10-30s without launching
+Unity** by driving the editor's bundled Roslyn (`csc.dll`) against the engine reference assemblies
+— it runs even while the editor is open; and (2) **run PlayMode/EditMode tests and editor
+automation (`-executeMethod` scene bakes) in `-batchmode` on an APFS copy-on-write clone** with the
+lock files stripped, so they work alongside your open editor. Generated scenes/assets keep their
+GUIDs, so they drop back into the real project with references intact.
+
+**Use it when** you've edited a Unity project's C# and want to know it compiles or passes without
+clicking into the editor — "does this compile", "run the Unity tests headless", "rebake the scene
+from the CLI", "set up Unity CI", or any edit→verify loop on a project whose editor is already open.
+
+**What's inside**
+
+- `SKILL.md` — the edit→compile→clone→test→adopt loop and operating principles.
+- `scripts/roslyn-compile-check.sh` — compile a project (runtime or editor) via Unity's bundled Roslyn; prints the error count and top error classes. Pure bash, no installs. Handles the two non-obvious reference-set gotchas (netstandard shims required; monolithic `UnityEditor.dll` must be excluded).
+- `scripts/clone-unity-project.sh` — APFS copy-on-write (or plain) clone with lock/instance/layout files stripped so batchmode runs alongside the open editor.
+- `references/headless-runbook.md` — every flag, the compile-recipe rationale, and the batchmode failure-mode catalog (frame-wait flakes, `WaitForEndOfFrame` no-fires, serialized-value-beats-code-default, sceneLoaded cascade, `[InitializeOnLoad]` hangs).
+
+### 📸 unity-visual-self-qa
+
+Let an agent **see its own Unity game**. A PlayMode test renders every scene — **camera plus the
+screen-space HUD**, which a naive `cam.Render()` misses — into an off-screen RenderTexture and writes
+one exact-resolution PNG per scene in `-batchmode`. The same public `Capture()` shoots popups/menus
+after you open them (by reflection if the test assembly can't reference your UI). Then you actually
+review the shots: read them, crop into HUD/text/alignment details with nearest-neighbour zoom, and
+measure real region colours so "black void vs dark backdrop" is a measurement, not a guess.
+
+**Use it when** you want to verify how a Unity game *looks* without a human screenshotting —
+"screenshot every scene", "does the HUD look right", "visual QA/regression for my Unity game",
+"audit the menus", or checking art/layout after a change. Pairs with `unity-headless-validation` to
+capture a freshly-baked scene on the clone.
+
+**What's inside**
+
+- `SKILL.md` — the capture + review loop, the two harness tricks (overlay-canvas reparent; wall-clock settle), and operating principles.
+- `scripts/VisualAuditCapture.cs` — the PlayMode capture harness; `Capture()` is public/static so popup tests reuse it.
+- `scripts/probe_image.py` — Pillow-only screenshot probe: `dims`, `crop` (nearest-neighbour zoom), `color` (mean/min/max RGB of a region).
+- `references/review-loop.md` — capture command, popup coverage, the look→crop→measure→fix loop, and gotchas (`-nographics` black frames, capture-order state leaks, editor-only debug-UI contamination).
+
+> Both Unity skills use **only what Unity already ships** (its bundled .NET/Roslyn, `-batchmode`) plus `git`/`bash` and (for the probe) Pillow. No paid APIs, no secrets, nothing account-specific.
 
 ---
 
